@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express'
-import { getSession, saveSession } from '../core/sessionManager'
-import { invalidateCompanyCache } from '../core/orchestrator'
-import { logger } from '../core/logger'
+import { getSession, saveSession } from '../../core/sessionManager'
+import { invalidateCompanyCache } from '../../core/orchestrator'
+import { logger } from '../../core/logger'
 
 // Store en memoria de conversaciones activas (en prod usar DB)
 export const conversationStore = new Map<string, {
