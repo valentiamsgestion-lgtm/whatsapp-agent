@@ -33,7 +33,7 @@ export async function createServer() {
   app.use('/admin/static', express.static(publicDir))
 
   // ── API admin ──
-  app.use('/admin/api', createAdminRouter(adapters.storage))
+  app.use('/admin/api', createAdminRouter(adapters.storage, adapters, processMessage))
 
   // ── Webhook mensajería ──
   app.post('/webhook/:channel', async (req, res) => {
