@@ -47,9 +47,9 @@ export function createAdminRouter(storage: any, adapters: any, processMessage: a
                 conv.humanMode = enabled
                 conversationStore.set(key, conv)
         }
-        const session = await getSession(userId, storage)
+        const session = await getSession(userId, channel)
         session.humanMode = enabled
-        await saveSession(userId, session, storage)
+                await saveSession(session)
         res.json({ ok: true })
   })
 
