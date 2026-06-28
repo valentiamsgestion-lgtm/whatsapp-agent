@@ -1,0 +1,51 @@
+{
+  "name": "Valentia MS",
+  "description": "Agencia de Marketing Digital y Asistencia Virtual en Valencia. Ayudamos a emprendedores, autónomos y pymes a crecer con orden y rentabilidad. Somos Yolanda (ventas y estrategia de negocio) y Raquel (tecnología, automatización y SEO), con más de 10 años de experiencia combinada. No somos un proveedor externo — somos el equipo externo que se implica de verdad.",
+  "services": [
+    "Marketing Digital (redes sociales, SEO, Google Ads, Meta Ads, email marketing)",
+    "Asistencia Virtual (bandeja de entrada, agenda, atención al cliente, facturación)",
+    "Automatización con IA (WhatsApp, flujos automáticos, integración de herramientas)",
+    "Gestión de Redes Sociales (Instagram, LinkedIn, TikTok)",
+    "Copywriting y contenidos",
+    "Publicidad en Meta Ads y Google Ads",
+    "SEO y posicionamiento web",
+    "Páginas web corporativas desde 300€"
+  ],
+  "schedule": "Lunes a Viernes de 9:00 a 18:00. Respondemos consultas de WhatsApp en horario de oficina. Para urgencias, enviamos un mensaje y te respondemos en menos de 2 horas.",
+  "address": "Valencia, España (trabajamos 100% online con clientes de toda España)",
+  "phone": "+34 644 03 68 14",
+  "faqs": [
+    {
+      "question": "¿Cómo empezamos a trabajar?",
+      "answer": "Muy sencillo: primero hacemos una reunión de diagnóstico gratuita de 30 minutos por videollamada. Analizamos tu negocio y tus objetivos, y en menos de 48h te enviamos una propuesta a medida. Si te encaja, nos integramos en tus procesos y arrancamos en menos de 7 días."
+    },
+    {
+      "question": "¿Tengo que contratar todos los servicios?",
+      "answer": "No, somos totalmente flexibles. Muchos clientes empiezan solo con asistencia virtual o solo con redes sociales y van escalando según sus necesidades. Tú decides qué delegas y a qué ritmo."
+    },
+    {
+      "question": "¿Cuánto cuesta trabajar con vosotras?",
+      "answer": "Depende de los servicios y las horas. Las páginas web corporativas empiezan desde 300€. La asistencia virtual va desde 250€/mes según la carga. El marketing digital se presupuesta a medida. Pídenos una auditoría gratuita y te damos cifras concretas sin compromiso."
+    },
+    {
+      "question": "¿Trabajáis con empresas de fuera de Valencia?",
+      "answer": "Sí, trabajamos 100% online con autónomos y pymes de toda España. La mayoría de nuestros clientes ni siquiera nos han visto en persona y la relación funciona perfectamente."
+    },
+    {
+      "question": "¿Cuánto tiempo lleva ver resultados?",
+      "answer": "En asistencia virtual el orden se nota desde la primera semana. En marketing digital, los resultados orgánicos (SEO) requieren entre 3 y 6 meses; las campañas de pago (Ads) funcionan desde el primer mes."
+    },
+    {
+      "question": "¿Qué es la auditoría gratuita?",
+      "answer": "Es una videollamada de 30 minutos sin compromiso donde analizamos tu negocio, tus cuellos de botella y lo que quieres conseguir. Al terminar ya tienes claridad sobre qué pasos dar, aunque no nos contrates."
+    },
+    {
+      "question": "¿Podéis gestionar mi WhatsApp Business?",
+      "answer": "Sí, la atención al cliente por WhatsApp forma parte de nuestro servicio de asistencia virtual. También podemos configurar un agente de IA para que responda automáticamente fuera de horario."
+    },
+    {
+      "question": "¿Con qué herramientas trabajáis?",
+      "answer": "Trabajamos con Google Ads, Meta Ads, SEMrush, Ahrefs, Canva Pro, Adobe Suite, Mailchimp, ActiveCampaign, WordPress, Shopify, HubSpot, Notion, ClickUp, Make, n8n y muchas más. Nos adaptamos a las herramientas que ya uses."
+    }
+  ]
+}

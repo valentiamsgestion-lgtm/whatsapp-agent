@@ -1,0 +1,72 @@
+[
+  {
+    "name": "Auditoría gratuita",
+    "price": 0,
+    "currency": "€",
+    "description": "Videollamada de 30 min para analizar tu negocio. Sin compromiso.",
+    "category": "Diagnóstico"
+  },
+  {
+    "name": "Página web corporativa",
+    "price": 300,
+    "currency": "€",
+    "description": "Diseño profesional, optimizada y lista para vender. Desde 300€.",
+    "category": "Web"
+  },
+  {
+    "name": "Asistencia Virtual — Pack Básico",
+    "price": 250,
+    "currency": "€",
+    "description": "Hasta 10h/mes. Bandeja de entrada, agenda y atención al cliente básica.",
+    "category": "Asistencia Virtual"
+  },
+  {
+    "name": "Asistencia Virtual — Pack Profesional",
+    "price": 600,
+    "currency": "€",
+    "description": "Hasta 25h/mes. Gestión completa: email, agenda, clientes, facturación.",
+    "category": "Asistencia Virtual"
+  },
+  {
+    "name": "Asistencia Virtual — Pack Integral",
+    "price": 1200,
+    "currency": "€",
+    "description": "Hasta 50h/mes. Equipo dedicado, operativa completa del negocio.",
+    "category": "Asistencia Virtual"
+  },
+  {
+    "name": "Gestión de Redes Sociales",
+    "price": 350,
+    "currency": "€",
+    "description": "Desde 350€/mes. Calendario editorial, diseño y publicación en 2 redes.",
+    "category": "Marketing Digital"
+  },
+  {
+    "name": "SEO — Posicionamiento Web",
+    "price": 400,
+    "currency": "€",
+    "description": "Desde 400€/mes. Auditoría, optimización técnica y contenidos SEO.",
+    "category": "Marketing Digital"
+  },
+  {
+    "name": "Publicidad Meta Ads / Google Ads",
+    "price": 300,
+    "currency": "€",
+    "description": "Desde 300€/mes (gestión). Presupuesto publicitario aparte según cliente.",
+    "category": "Marketing Digital"
+  },
+  {
+    "name": "Automatización con IA — Setup",
+    "price": 500,
+    "currency": "€",
+    "description": "Configuración de flujos automáticos a medida (WhatsApp, email, CRM…).",
+    "category": "Automatización"
+  },
+  {
+    "name": "Servicio Integral 360º",
+    "price": 0,
+    "currency": "€",
+    "description": "Marketing + Asistencia + Automatización. Presupuesto a medida según necesidades.",
+    "category": "Integral"
+  }
+]

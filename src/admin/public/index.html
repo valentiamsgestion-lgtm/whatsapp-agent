@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel · Agente Conversacional</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #222536;
+    --border: #2e3147;
+    --border2: #3d4168;
+    --text: #e8eaf6;
+    --muted: #7b7fa8;
+    --accent: #6c63ff;
+    --accent2: #8b85ff;
+    --green: #22c55e;
+    --amber: #f59e0b;
+    --red: #ef4444;
+    --radius: 10px;
+    --sans: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; min-height: 100vh; }
+
+  /* Layout */
+  .shell { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+  .sidebar { background: var(--surface); border-right: 1px solid var(--border); padding: 24px 0; display: flex; flex-direction: column; gap: 4px; position: sticky; top: 0; height: 100vh; }
+  .sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+  .sidebar-logo span { font-size: 13px; color: var(--accent2); font-weight: 600; letter-spacing: .5px; text-transform: uppercase; }
+  .sidebar-logo p { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 20px; cursor: pointer; color: var(--muted); border-left: 2px solid transparent; transition: all .15s; font-size: 13px; }
+  .nav-item:hover { color: var(--text); background: var(--surface2); }
+  .nav-item.active { color: var(--accent2); border-left-color: var(--accent); background: rgba(108,99,255,.08); }
+  .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .main { overflow: auto; }
+  .page { display: none; padding: 32px; max-width: 960px; }
+  .page.active { display: block; }
+
+  /* Header */
+  .page-header { margin-bottom: 28px; }
+  .page-header h1 { font-size: 22px; font-weight: 600; }
+  .page-header p { color: var(--muted); margin-top: 4px; font-size: 13px; }
+
+  /* Stats */
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+  .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+  .stat-value { font-size: 28px; font-weight: 700; margin-top: 6px; color: var(--text); }
+  .stat-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* Table */
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; }
+  th { padding: 12px 16px; text-align: left; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid var(--border); background: var(--surface2); font-weight: 500; }
+  td { padding: 13px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,.02); }
+  .empty { text-align: center; color: var(--muted); padding: 48px; }
+
+  /* Badges */
+  .badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+  .badge-bot { background: rgba(34,197,94,.12); color: var(--green); }
+  .badge-human { background: rgba(245,158,11,.12); color: var(--amber); }
+  .badge-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  /* Toggle */
+  .toggle { position: relative; width: 36px; height: 20px; }
+  .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .toggle-track { position: absolute; inset: 0; background: var(--border2); border-radius: 10px; cursor: pointer; transition: background .2s; }
+  .toggle input:checked + .toggle-track { background: var(--accent); }
+  .toggle-thumb { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; background: white; border-radius: 50%; transition: transform .2s; pointer-events: none; }
+  .toggle input:checked ~ .toggle-thumb { transform: translateX(16px); }
+
+  /* Forms */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 20px; }
+  .card-title { font-size: 14px; font-weight: 600; margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
+  .card-title svg { color: var(--accent2); }
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; font-weight: 500; text-transform: uppercase; letter-spacing: .4px; }
+  .field input, .field textarea, .field select {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 7px;
+    color: var(--text); font-size: 14px; padding: 9px 12px; outline: none; font-family: var(--sans);
+    transition: border-color .15s;
+  }
+  .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--accent); }
+  .field textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .field-row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+
+  /* Tags input */
+  .tags-wrap { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; min-height: 42px; cursor: text; }
+  .tags-wrap:focus-within { border-color: var(--accent); }
+  .tag { display: inline-flex; align-items: center; gap: 5px; background: rgba(108,99,255,.2); color: var(--accent2); border-radius: 5px; padding: 2px 8px; font-size: 12px; }
+  .tag-remove { cursor: pointer; opacity: .6; line-height: 1; font-size: 14px; }
+  .tag-remove:hover { opacity: 1; }
+  .tag-input { background: none; border: none; outline: none; color: var(--text); font-size: 14px; font-family: var(--sans); min-width: 120px; flex: 1; padding: 1px 0; }
+
+  /* FAQs */
+  .faq-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 10px; position: relative; }
+  .faq-remove { position: absolute; top: 10px; right: 10px; background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px; line-height: 1; padding: 2px 6px; border-radius: 4px; }
+  .faq-remove:hover { color: var(--red); background: rgba(239,68,68,.1); }
+
+  /* Pricing table editable */
+  .price-item { display: grid; grid-template-columns: 2fr 100px 60px 2fr 120px 36px; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .price-item input, .price-item select { background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; color: var(--text); font-size: 13px; padding: 7px 10px; font-family: var(--sans); outline: none; width: 100%; }
+  .price-item input:focus, .price-item select:focus { border-color: var(--accent); }
+  .price-header { display: grid; grid-template-columns: 2fr 100px 60px 2fr 120px 36px; gap: 8px; margin-bottom: 8px; }
+  .price-header span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; padding: 0 10px; }
+
+  /* Buttons */
+  .btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; font-family: var(--sans); transition: all .15s; }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--border2); }
+  .btn-danger { background: rgba(239,68,68,.1); color: var(--red); border: 1px solid rgba(239,68,68,.2); }
+  .btn-danger:hover { background: rgba(239,68,68,.2); }
+  .btn-sm { padding: 5px 12px; font-size: 12px; }
+  .btn-icon { width: 32px; height: 32px; padding: 0; justify-content: center; }
+  .btn-row { display: flex; gap: 10px; margin-top: 24px; align-items: center; }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 10px; padding: 12px 18px; font-size: 13px; display: flex; align-items: center; gap: 10px; box-shadow: 0 8px 32px rgba(0,0,0,.4); transform: translateY(80px); opacity: 0; transition: all .3s; z-index: 999; }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast-icon { width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .toast-ok .toast-icon { background: rgba(34,197,94,.2); color: var(--green); }
+  .toast-err .toast-icon { background: rgba(239,68,68,.2); color: var(--red); }
+
+  /* Refresh btn */
+  .refresh-row { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+  .spin { animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Time */
+  .time { color: var(--muted); font-size: 12px; }
+  .phone { font-family: monospace; font-size: 13px; color: var(--accent2); }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <span>⚡ AgentPanel</span>
+      <p>Panel de administración</p>
+    </div>
+    <div class="nav-item active" onclick="showPage('conversations')">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+      Conversaciones
+    </div>
+    <div class="nav-item" onclick="showPage('company')">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+      Empresa
+    </div>
+    <div class="nav-item" onclick="showPage('pricing')">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      Precios
+    </div>
+    <div class="nav-item" onclick="showPage('faqs')">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      Preguntas frecuentes
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- ── CONVERSACIONES ── -->
+    <div class="page active" id="page-conversations">
+      <div class="page-header">
+        <h1>Conversaciones</h1>
+        <p>Ve quién está hablando con el agente y toma el control cuando necesites.</p>
+      </div>
+
+      <div class="stats" id="stats">
+        <div class="stat"><div class="stat-label">Total conversaciones</div><div class="stat-value" id="stat-total">—</div></div>
+        <div class="stat"><div class="stat-label">Modo humano activo</div><div class="stat-value" id="stat-human">—</div></div>
+        <div class="stat"><div class="stat-label">Activas últimas 24h</div><div class="stat-value" id="stat-24h">—</div></div>
+      </div>
+
+      <div class="refresh-row">
+        <button class="btn btn-secondary btn-sm" onclick="loadAll()">
+          <svg id="refresh-icon" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          Actualizar
+        </button>
+        <span class="time" id="last-update"></span>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Contacto</th>
+              <th>Último mensaje</th>
+              <th>Actividad</th>
+              <th>Mensajes</th>
+              <th>Estado</th>
+              <th>Control</th>
+            </tr>
+          </thead>
+          <tbody id="conv-table">
+            <tr><td colspan="6" class="empty">Cargando conversaciones…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── EMPRESA ── -->
+    <div class="page" id="page-company">
+      <div class="page-header">
+        <h1>Información de empresa</h1>
+        <p>El agente usa estos datos para responder preguntas. Los cambios se aplican al instante.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Datos básicos
+        </div>
+        <div class="field"><label>Nombre de la empresa</label><input id="c-name" type="text" placeholder="Mi Empresa SL"></div>
+        <div class="field"><label>Descripción</label><textarea id="c-desc" placeholder="Breve descripción para que el agente sepa de qué va tu negocio…"></textarea></div>
+        <div class="field-row">
+          <div class="field"><label>Teléfono</label><input id="c-phone" type="text" placeholder="+34 600 000 000"></div>
+          <div class="field"><label>Dirección</label><input id="c-address" type="text" placeholder="Calle Mayor 1, Valencia"></div>
+        </div>
+        <div class="field"><label>Horario</label><input id="c-schedule" type="text" placeholder="Lunes a Viernes de 9:00 a 18:00, Sábados de 10:00 a 14:00"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          Servicios que ofreces
+        </div>
+        <div class="field">
+          <label>Escribe un servicio y pulsa Enter</label>
+          <div class="tags-wrap" id="services-wrap" onclick="document.getElementById('service-input').focus()">
+            <input id="service-input" class="tag-input" placeholder="Añadir servicio…" onkeydown="handleTagKey(event,'services')">
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveCompany()">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+          Guardar cambios
+        </button>
+        <button class="btn btn-secondary" onclick="loadCompany()">Descartar</button>
+      </div>
+    </div>
+
+    <!-- ── PRECIOS ── -->
+    <div class="page" id="page-pricing">
+      <div class="page-header">
+        <h1>Tarifas y precios</h1>
+        <p>El agente consultará esta lista cuando alguien pregunte por precios. Actualización inmediata.</p>
+      </div>
+
+      <div class="card">
+        <div class="price-header">
+          <span>Servicio / producto</span>
+          <span>Precio</span>
+          <span>Moneda</span>
+          <span>Descripción</span>
+          <span>Categoría</span>
+          <span></span>
+        </div>
+        <div id="price-list"></div>
+        <button class="btn btn-secondary btn-sm" style="margin-top:12px" onclick="addPriceRow()">
+          <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+          Añadir línea
+        </button>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="savePricing()">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+          Guardar precios
+        </button>
+        <button class="btn btn-secondary" onclick="loadCompany()">Descartar</button>
+      </div>
+    </div>
+
+    <!-- ── FAQS ── -->
+    <div class="page" id="page-faqs">
+      <div class="page-header">
+        <h1>Preguntas frecuentes</h1>
+        <p>El agente usará estas respuestas exactas cuando un cliente haga estas preguntas.</p>
+      </div>
+
+      <div class="card">
+        <div id="faq-list"></div>
+        <button class="btn btn-secondary btn-sm" style="margin-top:4px" onclick="addFaq()">
+          <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+          Añadir pregunta
+        </button>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveFaqs()">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+          Guardar preguntas
+        </button>
+        <button class="btn btn-secondary" onclick="loadCompany()">Descartar</button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <div class="toast-icon" id="toast-icon"></div>
+  <span id="toast-msg"></span>
+</div>
+
+<script>
+// ── Estado global ──
+let companyData = {}
+let pricingData = []
+let services = []
+let faqs = []
+
+// ── Navegación ──
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'))
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'))
+  document.getElementById('page-' + id).classList.add('active')
+  event.currentTarget.classList.add('active')
+  if (id === 'conversations') loadAll()
+}
+
+// ── Toast ──
+function toast(msg, ok = true) {
+  const el = document.getElementById('toast')
+  const icon = document.getElementById('toast-icon')
+  document.getElementById('toast-msg').textContent = msg
+  el.className = 'toast show ' + (ok ? 'toast-ok' : 'toast-err')
+  icon.innerHTML = ok
+    ? '<svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>'
+    : '<svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>'
+  clearTimeout(el._t)
+  el._t = setTimeout(() => el.classList.remove('show'), 3000)
+}
+
+// ── API helpers ──
+async function api(path, opts = {}) {
+  const r = await fetch('/admin/api' + path, {
+    headers: { 'Content-Type': 'application/json' },
+    ...opts,
+  })
+  if (!r.ok) throw new Error(await r.text())
+  return r.json()
+}
+
+// ── Conversaciones ──
+async function loadAll() {
+  const icon = document.getElementById('refresh-icon')
+  icon.classList.add('spin')
+  try {
+    const [stats, convs] = await Promise.all([
+      api('/stats'),
+      api('/conversations'),
+    ])
+    document.getElementById('stat-total').textContent = stats.totalConversations
+    document.getElementById('stat-human').textContent = stats.humanModeActive
+    document.getElementById('stat-24h').textContent = stats.activeLast24h
+    renderConversations(convs)
+    document.getElementById('last-update').textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-ES')
+  } catch (e) {
+    toast('Error cargando datos', false)
+  }
+  icon.classList.remove('spin')
+}
+
+function renderConversations(convs) {
+  const tbody = document.getElementById('conv-table')
+  if (!convs.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">Sin conversaciones todavía. Cuando llegue el primer mensaje aparecerá aquí.</td></tr>'
+    return
+  }
+  tbody.innerHTML = convs.map(c => `
+    <tr>
+      <td><span class="phone">${c.userId}</span></td>
+      <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)">${escHtml(c.preview || '—')}</td>
+      <td class="time">${timeAgo(c.lastActivity)}</td>
+      <td style="text-align:center">${c.messageCount}</td>
+      <td>
+        <span class="badge ${c.humanMode ? 'badge-human' : 'badge-bot'}">
+          <span class="badge-dot"></span>${c.humanMode ? 'Humano' : 'Bot'}
+        </span>
+      </td>
+      <td>
+        <label class="toggle" title="${c.humanMode ? 'Desactivar modo humano' : 'Activar modo humano'}">
+          <input type="checkbox" ${c.humanMode ? 'checked' : ''} onchange="toggleHuman('${c.userId}','${c.channel}',this.checked)">
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+      </td>
+    </tr>
+  `).join('')
+}
+
+async function toggleHuman(userId, channel, enabled) {
+  try {
+    await api(`/conversations/${encodeURIComponent(userId)}/human-mode`, {
+      method: 'POST',
+      body: JSON.stringify({ channel, enabled }),
+    })
+    toast(enabled ? 'Modo humano activado' : 'Bot reactivado')
+    setTimeout(loadAll, 500)
+  } catch (e) {
+    toast('Error cambiando estado', false)
+  }
+}
+
+// ── Empresa ──
+async function loadCompany() {
+  try {
+    const { company, pricing } = await api('/company')
+    companyData = company
+    pricingData = pricing
+    services = [...(company.services || [])]
+    faqs = [...(company.faqs || [])]
+
+    document.getElementById('c-name').value = company.name || ''
+    document.getElementById('c-desc').value = company.description || ''
+    document.getElementById('c-phone').value = company.phone || ''
+    document.getElementById('c-address').value = company.address || ''
+    document.getElementById('c-schedule').value = company.schedule || ''
+
+    renderServices()
+    renderPricing()
+    renderFaqs()
+  } catch (e) {
+    toast('Error cargando datos de empresa', false)
+  }
+}
+
+async function saveCompany() {
+  const updated = {
+    ...companyData,
+    name: document.getElementById('c-name').value.trim(),
+    description: document.getElementById('c-desc').value.trim(),
+    phone: document.getElementById('c-phone').value.trim(),
+    address: document.getElementById('c-address').value.trim(),
+    schedule: document.getElementById('c-schedule').value.trim(),
+    services,
+    faqs: companyData.faqs || faqs,
+  }
+  try {
+    await api('/company', { method: 'POST', body: JSON.stringify({ company: updated, pricing: pricingData }) })
+    companyData = updated
+    toast('Cambios guardados — el agente ya los usa')
+  } catch (e) {
+    toast('Error guardando', false)
+  }
+}
+
+// ── Servicios (tags) ──
+function renderServices() {
+  const wrap = document.getElementById('services-wrap')
+  const input = document.getElementById('service-input')
+  wrap.innerHTML = ''
+  services.forEach((s, i) => {
+    const tag = document.createElement('span')
+    tag.className = 'tag'
+    tag.innerHTML = `${escHtml(s)} <span class="tag-remove" onclick="removeService(${i})">×</span>`
+    wrap.appendChild(tag)
+  })
+  wrap.appendChild(input)
+}
+
+function handleTagKey(e, type) {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault()
+    const val = e.target.value.trim().replace(/,$/, '')
+    if (val) {
+      services.push(val)
+      e.target.value = ''
+      renderServices()
+      document.getElementById('service-input').focus()
+    }
+  } else if (e.key === 'Backspace' && !e.target.value && services.length) {
+    services.pop()
+    renderServices()
+    document.getElementById('service-input').focus()
+  }
+}
+
+function removeService(i) {
+  services.splice(i, 1)
+  renderServices()
+}
+
+// ── Precios ──
+function renderPricing() {
+  const list = document.getElementById('price-list')
+  list.innerHTML = pricingData.map((p, i) => `
+    <div class="price-item">
+      <input value="${escAttr(p.name)}" placeholder="Nombre del servicio" onchange="pricingData[${i}].name=this.value">
+      <input type="number" value="${p.price}" placeholder="0" onchange="pricingData[${i}].price=parseFloat(this.value)||0">
+      <select onchange="pricingData[${i}].currency=this.value">
+        <option ${p.currency==='€'?'selected':''}>€</option>
+        <option ${p.currency==='$'?'selected':''}>$</option>
+        <option ${p.currency==='£'?'selected':''}>£</option>
+      </select>
+      <input value="${escAttr(p.description||'')}" placeholder="Descripción opcional" onchange="pricingData[${i}].description=this.value">
+      <input value="${escAttr(p.category||'')}" placeholder="Categoría" onchange="pricingData[${i}].category=this.value">
+      <button class="btn btn-icon btn-danger" onclick="removePrice(${i})" title="Eliminar">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+  `).join('')
+}
+
+function addPriceRow() {
+  pricingData.push({ name: '', price: 0, currency: '€', description: '', category: '' })
+  renderPricing()
+  document.querySelector('#price-list .price-item:last-child input')?.focus()
+}
+
+function removePrice(i) {
+  pricingData.splice(i, 1)
+  renderPricing()
+}
+
+async function savePricing() {
+  try {
+    await api('/company', { method: 'POST', body: JSON.stringify({ company: companyData, pricing: pricingData }) })
+    toast('Precios actualizados — el agente ya los usa')
+  } catch (e) {
+    toast('Error guardando precios', false)
+  }
+}
+
+// ── FAQs ──
+function renderFaqs() {
+  const list = document.getElementById('faq-list')
+  if (!faqs.length) {
+    list.innerHTML = '<p style="color:var(--muted);font-size:13px;padding:8px 0 16px">Sin preguntas frecuentes. Añade las dudas más comunes de tus clientes.</p>'
+    return
+  }
+  list.innerHTML = faqs.map((f, i) => `
+    <div class="faq-item">
+      <button class="faq-remove" onclick="removeFaq(${i})" title="Eliminar">×</button>
+      <div class="field" style="margin-bottom:10px">
+        <label>Pregunta</label>
+        <input value="${escAttr(f.question)}" placeholder="¿Cuánto tarda el servicio?" onchange="faqs[${i}].question=this.value">
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label>Respuesta</label>
+        <textarea placeholder="La respuesta que el agente dará exactamente…" onchange="faqs[${i}].answer=this.value">${escHtml(f.answer)}</textarea>
+      </div>
+    </div>
+  `).join('')
+}
+
+function addFaq() {
+  faqs.push({ question: '', answer: '' })
+  renderFaqs()
+  document.querySelector('#faq-list .faq-item:last-child input')?.focus()
+}
+
+function removeFaq(i) {
+  faqs.splice(i, 1)
+  renderFaqs()
+}
+
+async function saveFaqs() {
+  const updated = { ...companyData, faqs, services }
+  try {
+    await api('/company', { method: 'POST', body: JSON.stringify({ company: updated, pricing: pricingData }) })
+    companyData = updated
+    toast('Preguntas frecuentes guardadas')
+  } catch (e) {
+    toast('Error guardando', false)
+  }
+}
+
+// ── Utils ──
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+}
+function escAttr(s) { return escHtml(s) }
+
+function timeAgo(dateStr) {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const m = Math.floor(diff / 60000)
+  if (m < 1) return 'ahora mismo'
+  if (m < 60) return `hace ${m}m`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `hace ${h}h`
+  return `hace ${Math.floor(h/24)}d`
+}
+
+// ── Init ──
+loadAll()
+loadCompany()
+setInterval(loadAll, 30000)
+</script>
+</body>
+</html>
