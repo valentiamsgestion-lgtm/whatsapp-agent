@@ -39,7 +39,8 @@ export class TwilioWhatsAppAdapter implements MessagingAdapter {
   validateWebhook(req: unknown): boolean {
     const r = req as Request
     const signature = r.headers['x-twilio-signature'] as string
-    const url = `${r.protocol}://${r.get('host')}${r.originalUrl}`
+            const proto = (r.headers['x-forwarded-proto'] as string || r.protocol)
+            const url = `${proto}://${r.get('host')}${r.originalUrl}`
     return twilio.validateRequest(
       config.TWILIO_AUTH_TOKEN!,
       signature,
