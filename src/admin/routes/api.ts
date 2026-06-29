@@ -1,133 +1,205 @@
-——————————————import { Router, Request, Response } from 'express'
+import { Router, Request, Response } from 'express'
 import { getSession, saveSession } from '../../core/sessionManager'
 import { invalidateCompanyCache } from '../../core/orchestrator'
 import { logger } from '../../core/logger'
 
 // Store en memoria de conversaciones activas (en prod usar DB)
 export const conversationStore = new Map<string, {
-    userId: string
-    channel: string
-    lastMessage: string
-    lastActivity: Date
-    humanMode: boolean
-    messageCount: number
-    preview: string
+        userId: string
+        channel: string
+        lastMessage: string
+        lastActivity: Date
+        humanMode: boolean
+        messageCount: number
+        preview: string
 }>()
 
-export function recordConversation(userId: string, channel: string, message: string, humanMode: boolean) {
-    const key = `${channel}:${userId}`
-    const existing = conversationStore.get(key)
-    conversationStore.set(key, {
-          userId,
-          channel,
-          lastMessage: message,
-          lastActivity: new Date(),
-          humanMode,
-          messageCount: (existing?.messageCount ?? 0) + 1,
-          preview: message.substring(0, 80),
-    })
+export function recordConversation(userId: string, channel: string, message: string, humanMode: boolean = false) {
+        const key = `${channel}:${userId}`
+        const existing = conversationStore.get(key)
+        conversationStore.set(key, {
+                    userId,
+                    channel,
+                    lastMessage: message,
+                    lastActivity: new Date(),
+                    humanMode,
+                    messageCount: (existing?.messageCount ?? 0) + 1,
+                    preview: message.substring(0, 100)
+        })
 }
 
-export function createAdminRouter(storage: any, adapters: any, processMessage: any) {
-    const router = Router()
+export function createAdminRouter(storage: any, adapters?: any, processMessage?: any) {
+        const router = Router()
 
-  // — GET /admin/api/conversations —
-  router.get('/conversations', (_req: Request, res: Response) => {
-        const list = Array.from(conversationStore.values())
-        res.json(list)
-  })
-
-  // — POST /admin/api/conversations/:userId/human-mode —
-  router.post('/conversations/:userId/human-mode', async (req, res) => {
-        const { userId } = req.params
-        const { channel, enabled } = req.body
-        const key = `${channel}:${userId}`
-        const conv = conversationStore.get(key)
-        if (conv) {
-                conv.humanMode = enabled
-                conversationStore.set(key, conv)
-        }
-        const session = await getSession(userId, channel)
-        session.humanMode = enabled
-                await saveSession(session)
-        res.json({ ok: true })
-  })
-
-  // — GET /admin/api/company —
-  router.get('/company', async (_req: Request, res: Response) => {
-        try {
-                const data = await storage.getCompanyData?.() ?? {}
-                        res.json(data)
-        } catch {
-                res.json({})
-        }
-  })
-
-  // — POST /admin/api/company —
-  router.post('/company', async (req, res) => {
-        try {
-                await storage.saveCompanyData?.(req.body)
-                invalidateCompanyCache()
-                res.json({ ok: true })
-        } catch (err) {
-                logger.error('Error guardando company data', { err })
-                res.status(500).json({ error: 'Error guardando datos' })
-        }
-  })
-
-  // — GET /admin/api/stats —
-  router.get('/stats', (_req: Request, res: Response) => {
-        const convs = Array.from(conversationStore.values())
-        const humanActive = convs.filter(c => c.humanMode).length
-        const last24h = convs.filter(c =>
-                Date.now() - c.lastActivity.getTime() < 24 * 60 * 60 * 1000
-                                         ).length
-
-                 res.json({
-                         totalConversations: convs.length,
-                         humanModeActive: humanActive,
-                         activeLast24h: last24h,
-                 })
-  })
-
-  // — POST /admin/api/cache/refresh —
-  router.post('/cache/refresh', (_req: Request, res: Response) => {
-        invalidateCompanyCache()
-        res.json({ ok: true })
-  })
-
-  // — POST /admin/api/simulate — Simula un mensaje entrante sin validar firma Twilio
-  router.post('/simulate', async (req: Request, res: Response) => {
-        try {
-                const { message, userId } = req.body
-                if (!message) {
-                          return res.status(400).json({ error: 'Falta el campo message' })
+    // GET /admin/api/conversations
+    router.get('/conversations', async (req: Request, res: Response) => {
+                try {
+                                const conversations = Array.from(conversationStore.values())
+                                    .sort((a, b) => b.lastActivity.getTime() - a.lastActivity.getTime())
+                                res.json({ success: true, conversations })
+                } catch (error) {
+                                logger.error('Error getting conversations:', error)
+                                res.status(500).json({ success: false, error: 'Internal server error' })
                 }
-                const phone = userId || '+34000000000'
-                const incoming = {
-                          id: `sim_${Date.now()}`,
-                          from: phone,
-                          body: message,
-                          timestamp: new Date(),
-                          channel: 'whatsapp',
-                          raw: req.body,
-                }
-                const replies: string[] = []
-                        const fakeAdapter = {
-                                  ...adapters,
-                                  messaging: {
-                                              ...adapters.messaging,
-                                              send: async (msg: any) => { replies.push(msg.body) },
-                                  },
-                        }
-                recordConversation(phone, 'whatsapp', message, false)
-                await processMessage(incoming, fakeAdapter)
-                res.json({ ok: true, replies })
-        } catch (err: any) {
-                logger.error('Error en simulate', { err })
-                res.status(500).json({ error: err.message || 'Error interno' })
-        }
-  })
+    })
 
-  return router
+    // POST /admin/api/simulate - Test endpoint that bypasses Twilio signature validation
+    router.post('/simulate', async (req: Request, res: Response) => {
+                try {
+                                const { message, userId, channel } = req.body
+                                if (!message || !userId) {
+                                                    return res.status(400).json({ success: false, error: 'message and userId are required' })
+                                }
+                                const targetChannel = channel || 'whatsapp'
+                                const targetUserId = userId
+
+                    if (!processMessage) {
+                                        return res.status(500).json({ success: false, error: 'processMessage not available' })
+                    }
+
+                    // Get or create session
+                    let session = await getSession(targetUserId, targetChannel)
+                                if (!session) {
+                                                    session = {
+                                                                            userId: targetUserId,
+                                                                            channel: targetChannel,
+                                                                            messages: [],
+                                                                            humanMode: false,
+                                                                            createdAt: new Date(),
+                                                                            updatedAt: new Date()
+                                                    }
+                                }
+
+                    // Process the message
+                    const response = await processMessage(message, session, adapters)
+
+                    // Save session
+                    await saveSession(session)
+
+                    // Record conversation
+                    recordConversation(targetUserId, targetChannel, message)
+
+                    res.json({ success: true, response, session })
+                } catch (error) {
+                                logger.error('Error in simulate endpoint:', error)
+                                res.status(500).json({ success: false, error: String(error) })
+                }
+    })
+
+    // GET /admin/api/company
+    router.get('/company', async (req: Request, res: Response) => {
+                try {
+                                const company = await storage.getCompanyInfo()
+                                res.json({ success: true, company })
+                } catch (error) {
+                                logger.error('Error getting company:', error)
+                                res.status(500).json({ success: false, error: 'Internal server error' })
+                }
+    })
+
+    // PUT /admin/api/company
+    router.put('/company', async (req: Request, res: Response) => {
+                try {
+                                const data = req.body
+                                await storage.saveCompanyInfo(data)
+                                invalidateCompanyCache()
+                                res.json({ success: true })
+                } catch (error) {
+                                logger.error('Error saving company:', error)
+                                res.status(500).json({ success: false, error: 'Internal server error' })
+                }
+    })
+
+    // GET /admin/api/pricing
+    router.get('/pricing', async (req: Request, res: Response) => {
+                try {
+                                const pricing = await storage.getPricingItems()
+                                res.json({ success: true, pricing })
+                } catch (error) {
+                                logger.error('Error getting pricing:', error)
+                                res.status(500).json({ success: false, error: 'Internal server error' })
+                }
+    })
+
+    // POST /admin/api/pricing
+    router.post('/pricing', async (req: Request, res: Response) => {
+                try {
+                                const item = req.body
+                                const id = await storage.savePricingItem(item)
+                                res.json({ success: true, id })
+                } catch (error) {
+                                logger.error('Error saving pricing:', error)
+                                res.status(500).json({ success: false, error: 'Internal server error' })
+                }
+    })
+
+    // DELETE /admin/api/pricing/:id
+    router.delete('/pricing/:id', async (req: Request, res: Response) => {
+                try {
+                                await storage.deletePricingItem(req.params.id)
+                                res.json({ success: true })
+                } catch (error) {
+                                logger.error('Error deleting pricing:', error)
+                                res.status(500).json({ success: false, error: 'Internal server error' })
+                }
+    })
+
+    // GET /admin/api/faqs
+    router.get('/faqs', async (req: Request, res: Response) => {
+                try {
+                                const faqs = await storage.getFAQs()
+                                res.json({ success: true, faqs })
+                } catch (error) {
+                                logger.error('Error getting faqs:', error)
+                                res.status(500).json({ success: false, error: 'Internal server error' })
+                }
+    })
+
+    // POST /admin/api/faqs
+    router.post('/faqs', async (req: Request, res: Response) => {
+                try {
+                                const faq = req.body
+                                const id = await storage.saveFAQ(faq)
+                                res.json({ success: true, id })
+                } catch (error) {
+                                logger.error('Error saving faq:', error)
+                                res.status(500).json({ success: false, error: 'Internal server error' })
+                }
+    })
+
+    // DELETE /admin/api/faqs/:id
+    router.delete('/faqs/:id', async (req: Request, res: Response) => {
+                try {
+                                await storage.deleteFAQ(req.params.id)
+                                res.json({ success: true })
+                } catch (error) {
+                                logger.error('Error deleting faq:', error)
+                                res.status(500).json({ success: false, error: 'Internal server error' })
+                }
+    })
+
+    // GET /admin/api/brand
+    router.get('/brand', async (req: Request, res: Response) => {
+                try {
+                                const brand = await storage.getBrandSettings()
+                                res.json({ success: true, brand })
+                } catch (error) {
+                                logger.error('Error getting brand:', error)
+                                res.status(500).json({ success: false, error: 'Internal server error' })
+                }
+    })
+
+    // PUT /admin/api/brand
+    router.put('/brand', async (req: Request, res: Response) => {
+                try {
+                                const data = req.body
+                                await storage.saveBrandSettings(data)
+                                res.json({ success: true })
+                } catch (error) {
+                                logger.error('Error saving brand:', error)
+                                res.status(500).json({ success: false, error: 'Internal server error' })
+                }
+    })
+
+    return router
 }
